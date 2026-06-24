@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Main Application Class for Chanda Desktop.
@@ -9,9 +9,6 @@ the application lifecycle and main window.
 
 import customtkinter as ctk
 from typing import Optional
-
-from .config import ConfigManager
-from .theme import ThemeManager
 
 
 class ChandaDesktopApp:
@@ -33,44 +30,23 @@ class ChandaDesktopApp:
         self.title = "Chanda - Sanskrit Meter Analyzer"
         self.geometry = "1200x800"
         
-        # Initialize configuration and theme managers
-        self.config = ConfigManager()
-        self.theme = ThemeManager(self.config)
-        
         # Initialize the main window
         self._setup_window()
         self._setup_theme()
         self._create_ui()
     
-    def 
-        # Load window settings from config
-        window_config = self.config.get_section('window')
-        width = window_config.get('width', 1200)
-        height = window_config.get('height', 800)
-        self.root.geometry(f"{width}x{height}")
+    def _setup_window(self):
+        """Create and configure the main window."""
+        self.root = ctk.CTk()
+        self.root.title(self.title)
+        self.root.geometry(self.geometry)
         
         # Set minimum window size
         self.root.minsize(800, 600)
         
-        # Restore window position if saved
-        pos_x = window_config.get('position_x', 0)
-        pos_y = window_config.get('position_y', 0)
-        if pos_x > 0 and pos_y > 0:
-            self.root.geometry(f'{width}x{height}+{pos_x}+{pos_y}')
-        elLoad theme from config
-        theme_mode = self.theme.get_theme()
-        ctk.set_appearance_mode(theme_mode
-            self.root.update_idletasks()
-            x = (self.root.winfo_screenwidth() // 2) - (width // 2)
-            y = (self.root.winfo_screenheight() // 2) - (height // 2)
-            self.root.geometry(f'{width}x{height}+{x}+{y}')
-        
-        # Restore maximized state
-        if window_config.get('maximized', False):
-            self.root.state('zoomed')
-        
-        # Save window state on close
-        self.root.protocol("WM_DELETE_WINDOW", self._on_closing
+        # Center window on screen
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
         height = self.root.winfo_height()
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
@@ -110,7 +86,7 @@ class ChandaDesktopApp:
         # Paste button
         self.btn_paste = ctk.CTkButton(
             btn_frame_left,
-            text="📋 Paste",
+            text="≡ƒôï Paste",
             width=100,
             command=self._on_paste
         )
@@ -119,33 +95,32 @@ class ChandaDesktopApp:
         # Clear button
         self.btn_clear = ctk.CTkButton(
             btn_frame_left,
-            text="🗑️ Clear",
-        analysis_config = self.config.get_section('analysis')
-        self.fuzzy_var = ctk.BooleanVar(value=analysis_config.get('fuzzy_enabled', True))
+            text="≡ƒùæ∩╕Å Clear",
+            width=100,
+            command=self._on_clear
+        )
+        self.btn_clear.pack(side="left", padx=2)
+        
+        # Analyze button (prominent)
+        self.btn_analyze = ctk.CTkButton(
+            btn_frame_left,
+            text="Γû╢∩╕Å Analyze",
+            width=120,
+            fg_color="#1f6aa5",
+            hover_color="#144870",
+            command=self._on_analyze
+        )
+        self.btn_analyze.pack(side="left", padx=5)
+        
+        # Right side controls
+        btn_frame_right = ctk.CTkFrame(toolbar, fg_color="transparent")
+        btn_frame_right.pack(side="right", padx=5)
+        
+        # Fuzzy checkbox
+        self.fuzzy_var = ctk.BooleanVar(value=True)
         self.chk_fuzzy = ctk.CTkCheckBox(
             btn_frame_right,
-            text="🔄 Fuzzy",
-            variable=self.fuzzy_var,
-            width=80
-        )
-        self.chk_fuzzy.pack(side="left", padx=5)
-        
-        # K value label and entry
-        ctk.CTkLabel(btn_frame_right, text="K:").pack(side="left", padx=(10, 2))
-        self.k_var = ctk.StringVar(value=str(analysis_config.get('fuzzy_k', 10)))
-        self.entry_k = ctk.CTkEntry(
-            btn_frame_right,
-            textvariable=self.k_var,
-            width=50
-        )
-        self.entry_k.pack(side="left", padx=2)
-        
-        # Theme toggle button
-        self.btn_theme = ctk.CTkButton(
-            btn_frame_right,
-            text=self.theme.get_theme_icon()y = ctk.CTkCheckBox(
-            btn_frame_right,
-            text="🔄 Fuzzy",
+            text="≡ƒöä Fuzzy",
             variable=self.fuzzy_var,
             width=80
         )
@@ -164,7 +139,7 @@ class ChandaDesktopApp:
         # Theme toggle button
         self.btn_theme = ctk.CTkButton(
             btn_frame_right,
-            text="🌙",
+            text="≡ƒîÖ",
             width=40,
             command=self._toggle_theme
         )
@@ -186,9 +161,7 @@ class ChandaDesktopApp:
         
         # Center Panel: Results
         self._create_results_panel(main_container)
-        analysis_config = self.config.get_section('analysis')
-        default_scheme = analysis_config.get('default_input_scheme', 'devanagari').capitalize()
-        self.script_var = ctk.StringVar(value=default_scheme
+        
         # Right Panel: Info/History
         self._create_info_panel(main_container)
     
@@ -235,8 +208,8 @@ class ChandaDesktopApp:
         placeholder = """Enter Sanskrit text here...
 
 Example:
-को न्वस्मिन् साम्प्रतं लोके गुणवान् कश्च वीर्यवान्।
-धर्मज्ञश्च कृतज्ञश्च सत्यवाक्यो दृढव्रतः॥"""
+αñòαÑï αñ¿αÑìαñ╡αñ╕αÑìαñ«αñ┐αñ¿αÑì αñ╕αñ╛αñ«αÑìαñ¬αÑìαñ░αññαñé αñ▓αÑïαñòαÑç αñùαÑüαñúαñ╡αñ╛αñ¿αÑì αñòαñ╢αÑìαñÜ αñ╡αÑÇαñ░αÑìαñ»αñ╡αñ╛αñ¿αÑìαÑñ
+αñºαñ░αÑìαñ«αñ£αÑìαñ₧αñ╢αÑìαñÜ αñòαÑâαññαñ£αÑìαñ₧αñ╢αÑìαñÜ αñ╕αññαÑìαñ»αñ╡αñ╛αñòαÑìαñ»αÑï αñªαÑâαñóαñ╡αÑìαñ░αññαñâαÑÑ"""
         self.text_input.insert("1.0", placeholder)
     
     def _create_results_panel(self, parent):
@@ -264,12 +237,12 @@ Example:
 Click "Analyze" or press Ctrl+Enter to analyze the input text.
 
 Features coming soon:
-• Syllable segmentation
-• Laghu-Guru pattern (color-coded)
-• Gana notation
-• Identified meters
-• Mātrā count
-• Fuzzy matches with similarity scores"""
+ΓÇó Syllable segmentation
+ΓÇó Laghu-Guru pattern (color-coded)
+ΓÇó Gana notation
+ΓÇó Identified meters
+ΓÇó M─ütr─ü count
+ΓÇó Fuzzy matches with similarity scores"""
         
         self.results_display.insert("1.0", results_placeholder)
     
@@ -312,7 +285,7 @@ Features coming soon:
         # Meter browser button
         btn_meter_browser = ctk.CTkButton(
             info_frame,
-            text="📚 Browse Meters",
+            text="≡ƒôÜ Browse Meters",
             command=self._on_meter_browser
         )
         btn_meter_browser.pack(pady=10, padx=10)
@@ -359,39 +332,15 @@ Features coming soon:
         self._update_status("Paste functionality coming soon...")
     
     def _on_clear(self):
-        new_mode = self.theme.toggle_theme()
-        self.btn_theme.configure(text=self.theme.get_theme_icon())
-        self._update_status(f"Switched to {new_mode} theme")
+        """Handle clear button click."""
+        self.text_input.delete("1.0", "end")
+        self._update_status("Input cleared")
     
-    def _update_status(self, message: str):
-        """Update the status bar message."""
-        self.status_label.configure(text=message)
-    
-    def _on_closing(self):
-        """Handle window closing event - save state before closing."""
-        # Save window size and position
-        if self.root.state() == 'zoomed':
-            self.config.set('window', 'maximized', True)
-        else:
-            self.config.set('window', 'maximized', False)
-            self.config.set('window', 'width', self.root.winfo_width())
-            self.config.set('window', 'height', self.root.winfo_height())
-            self.config.set('window', 'position_x', self.root.winfo_x())
-            self.config.set('window', 'position_y', self.root.winfo_y())
-        
-        # Save analysis settings
-        self.config.set('analysis', 'fuzzy_enabled', self.fuzzy_var.get())
-        try:
-            k_value = int(self.k_var.get())
-            self.config.set('analysis', 'fuzzy_k', k_value)
-        except ValueError:
-            pass  # Keep existing value if invalid
-        
-        # Save configuration
-        self.config.save()
-        
-        # Close the application
-        self.quit(onality coming in Phase 3...")
+    def _on_analyze(self):
+        """Handle analyze button click."""
+        text = self.text_input.get("1.0", "end-1c").strip()
+        if text:
+            self._update_status("Analysis functionality coming in Phase 3...")
             self.results_display.delete("1.0", "end")
             self.results_display.insert("1.0", 
                 f"Input text received ({len(text)} characters).\n\n"
@@ -410,7 +359,7 @@ Features coming soon:
         current = ctk.get_appearance_mode()
         new_mode = "Light" if current == "Dark" else "Dark"
         ctk.set_appearance_mode(new_mode)
-        self.btn_theme.configure(text="☀️" if new_mode == "Dark" else "🌙")
+        self.btn_theme.configure(text="ΓÿÇ∩╕Å" if new_mode == "Dark" else "≡ƒîÖ")
         self._update_status(f"Switched to {new_mode} theme")
     
     def _update_status(self, message: str):
