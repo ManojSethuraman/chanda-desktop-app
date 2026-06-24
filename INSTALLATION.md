@@ -13,17 +13,21 @@
 This setup allows you to modify both the chanda library and desktop app, with changes reflected immediately.
 
 ```bash
-# 1. Clone or download the entire repository
+# 1. Clone the repository
 git clone https://github.com/ManojSethuraman/chanda-desktop-app.git
 cd chanda-desktop-app
 
-# 2. Install dependencies (includes chanda library in editable mode)
-cd chanda_desktop
+# 2. Install dependencies
+# Note: This assumes chanda library is at C:\Chandojnana\chanda
+# If your chanda library is elsewhere, edit requirements.txt line 6
 pip install -r requirements.txt
 
 # 3. Run the application
 python main.py
 ```
+
+**Important:** The `requirements.txt` contains: `-e C:\Chandojnana\chanda`  
+If your chanda library is in a different location, update this path before running `pip install`.
 
 ### Option 2: Standalone Installation
 
