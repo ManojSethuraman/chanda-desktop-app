@@ -9,6 +9,8 @@ the application lifecycle and main window.
 
 import customtkinter as ctk
 from typing import Optional
+from ui.widgets import SanskritTextInput, ResultsDisplay, HistoryPanel
+from controllers import AnalysisController
 
 
 class ChandaDesktopApp:
@@ -29,6 +31,9 @@ class ChandaDesktopApp:
         self.root: Optional[ctk.CTk] = None
         self.title = "Chanda - Sanskrit Meter Analyzer"
         self.geometry = "1200x800"
+        
+        # Initialize analysis controller
+        self.analysis_controller = AnalysisController()
         
         # Initialize the main window
         self._setup_window()
@@ -86,7 +91,7 @@ class ChandaDesktopApp:
         # Paste button
         self.btn_paste = ctk.CTkButton(
             btn_frame_left,
-            text="≡ƒôï Paste",
+            text="Paste",
             width=100,
             command=self._on_paste
         )
@@ -95,7 +100,7 @@ class ChandaDesktopApp:
         # Clear button
         self.btn_clear = ctk.CTkButton(
             btn_frame_left,
-            text="≡ƒùæ∩╕Å Clear",
+            text="Clear",
             width=100,
             command=self._on_clear
         )
@@ -104,7 +109,7 @@ class ChandaDesktopApp:
         # Analyze button (prominent)
         self.btn_analyze = ctk.CTkButton(
             btn_frame_left,
-            text="Γû╢∩╕Å Analyze",
+            text="Analyze",
             width=120,
             fg_color="#1f6aa5",
             hover_color="#144870",
@@ -120,7 +125,7 @@ class ChandaDesktopApp:
         self.fuzzy_var = ctk.BooleanVar(value=True)
         self.chk_fuzzy = ctk.CTkCheckBox(
             btn_frame_right,
-            text="≡ƒöä Fuzzy",
+            text="Fuzzy",
             variable=self.fuzzy_var,
             width=80
         )
@@ -139,156 +144,86 @@ class ChandaDesktopApp:
         # Theme toggle button
         self.btn_theme = ctk.CTkButton(
             btn_frame_right,
-            text="≡ƒîÖ",
-            width=40,
+            text="Theme",
+            width=50,
             command=self._toggle_theme
         )
         self.btn_theme.pack(side="left", padx=10)
     
     def _create_main_area(self):
-        """Create the main content area with three panels."""
+        """Create the main content area with three resizable panels."""
+        import tkinter as tk
+        
+        # Main container
         main_container = ctk.CTkFrame(self.root)
         main_container.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # Configure grid weights for responsive layout
-        main_container.grid_columnconfigure(0, weight=1)  # Left panel
-        main_container.grid_columnconfigure(1, weight=2)  # Center panel
-        main_container.grid_columnconfigure(2, weight=1)  # Right panel
-        main_container.grid_rowconfigure(0, weight=1)
+        # Create horizontal PanedWindow for resizable panels
+        # Note: Using tk.PanedWindow as CustomTkinter doesn't have one
+        self.paned_window = tk.PanedWindow(
+            main_container,
+            orient=tk.HORIZONTAL,
+            sashwidth=5,
+            sashrelief=tk.RAISED,
+            bg="#2b2b2b" if ctk.get_appearance_mode() == "Dark" else "#dbdbdb"
+        )
+        self.paned_window.pack(fill="both", expand=True)
         
-        # Left Panel: Input
-        self._create_input_panel(main_container)
+        # Create frame containers for each panel
+        # These will hold our custom widgets
+        self.left_container = ctk.CTkFrame(self.paned_window)
+        self.center_container = ctk.CTkFrame(self.paned_window)
+        self.right_container = ctk.CTkFrame(self.paned_window)
         
-        # Center Panel: Results
-        self._create_results_panel(main_container)
+        # Add panels to PanedWindow
+        self.paned_window.add(self.left_container, minsize=200)
+        self.paned_window.add(self.center_container, minsize=300)
+        self.paned_window.add(self.right_container, minsize=200)
         
-        # Right Panel: Info/History
-        self._create_info_panel(main_container)
+        # Create the actual panel content
+        self._create_input_panel(self.left_container)
+        self._create_results_panel(self.center_container)
+        self._create_info_panel(self.right_container)
+        
+        # Restore saved panel sizes
+        self._restore_panel_sizes()
+        
+        # Bind sash position changes to save config
+        self.paned_window.bind("<ButtonRelease-1>", lambda e: self._save_panel_sizes())
     
     def _create_input_panel(self, parent):
         """Create the input panel (left side)."""
-        input_frame = ctk.CTkFrame(parent)
-        input_frame.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+        # Create SanskritTextInput widget with config manager
+        # Initialize config_manager if not already present
+        if not hasattr(self, 'config_manager'):
+            from app.config import ConfigManager
+            self.config_manager = ConfigManager()
         
-        # Header
-        header = ctk.CTkLabel(
-            input_frame,
-            text="Input Text",
-            font=("Arial", 14, "bold")
+        self.text_input = SanskritTextInput(
+            parent,
+            config_manager=self.config_manager
         )
-        header.pack(pady=5, padx=10, anchor="w")
-        
-        # Script selector (placeholder)
-        script_frame = ctk.CTkFrame(input_frame, fg_color="transparent")
-        script_frame.pack(fill="x", padx=10, pady=5)
-        
-        ctk.CTkLabel(script_frame, text="Script:").pack(side="left")
-        self.script_var = ctk.StringVar(value="Devanagari")
-        self.script_menu = ctk.CTkComboBox(
-            script_frame,
-            values=["Devanagari", "IAST", "ITRANS", "Harvard-Kyoto"],
-            variable=self.script_var,
-            width=150
-        )
-        self.script_menu.pack(side="left", padx=5)
-        
-        # Text input area (placeholder with instructions)
-        import tkinter as tk
-        self.text_input = tk.Text(
-            input_frame,
-            wrap="word",
-            font=("Nirmala UI", 12),
-            bg="#2b2b2b" if ctk.get_appearance_mode() == "Dark" else "#ffffff",
-            fg="#ffffff" if ctk.get_appearance_mode() == "Dark" else "#000000",
-            insertbackground="#ffffff" if ctk.get_appearance_mode() == "Dark" else "#000000"
-        )
-        self.text_input.pack(fill="both", expand=True, padx=10, pady=5)
-        
-        # Insert placeholder text
-        placeholder = """Enter Sanskrit text here...
-
-Example:
-αñòαÑï αñ¿αÑìαñ╡αñ╕αÑìαñ«αñ┐αñ¿αÑì αñ╕αñ╛αñ«αÑìαñ¬αÑìαñ░αññαñé αñ▓αÑïαñòαÑç αñùαÑüαñúαñ╡αñ╛αñ¿αÑì αñòαñ╢αÑìαñÜ αñ╡αÑÇαñ░αÑìαñ»αñ╡αñ╛αñ¿αÑìαÑñ
-αñºαñ░αÑìαñ«αñ£αÑìαñ₧αñ╢αÑìαñÜ αñòαÑâαññαñ£αÑìαñ₧αñ╢αÑìαñÜ αñ╕αññαÑìαñ»αñ╡αñ╛αñòαÑìαñ»αÑï αñªαÑâαñóαñ╡αÑìαñ░αññαñâαÑÑ"""
-        self.text_input.insert("1.0", placeholder)
+        self.text_input.pack(fill="both", expand=True)
     
     def _create_results_panel(self, parent):
         """Create the results panel (center)."""
-        results_frame = ctk.CTkFrame(parent)
-        results_frame.grid(row=0, column=1, sticky="nsew", padx=2, pady=2)
-        
-        # Header
-        header = ctk.CTkLabel(
-            results_frame,
-            text="Analysis Results",
-            font=("Arial", 14, "bold")
-        )
-        header.pack(pady=5, padx=10, anchor="w")
-        
-        # Results display (placeholder)
-        self.results_display = ctk.CTkTextbox(
-            results_frame,
-            font=("Nirmala UI", 11)
-        )
-        self.results_display.pack(fill="both", expand=True, padx=10, pady=5)
-        
-        results_placeholder = """Results will appear here after analysis.
-
-Click "Analyze" or press Ctrl+Enter to analyze the input text.
-
-Features coming soon:
-ΓÇó Syllable segmentation
-ΓÇó Laghu-Guru pattern (color-coded)
-ΓÇó Gana notation
-ΓÇó Identified meters
-ΓÇó M─ütr─ü count
-ΓÇó Fuzzy matches with similarity scores"""
-        
-        self.results_display.insert("1.0", results_placeholder)
+        self.results_display = ResultsDisplay(parent)
+        self.results_display.pack(fill="both", expand=True)
     
     def _create_info_panel(self, parent):
         """Create the info/history panel (right side)."""
-        info_frame = ctk.CTkFrame(parent)
-        info_frame.grid(row=0, column=2, sticky="nsew", padx=2, pady=2)
+        # Initialize config_manager if not already present
+        if not hasattr(self, 'config_manager'):
+            from app.config import ConfigManager
+            self.config_manager = ConfigManager()
         
-        # Header
-        header = ctk.CTkLabel(
-            info_frame,
-            text="History & Info",
-            font=("Arial", 14, "bold")
+        self.history_panel = HistoryPanel(
+            parent,
+            config_manager=self.config_manager,
+            on_item_select=self._on_history_item_select,
+            on_meter_browser=self._on_meter_browser
         )
-        header.pack(pady=5, padx=10, anchor="w")
-        
-        # Tabview for History and Favorites
-        tabview = ctk.CTkTabview(info_frame)
-        tabview.pack(fill="both", expand=True, padx=10, pady=5)
-        
-        tabview.add("Recent")
-        tabview.add("Favorites")
-        
-        # Recent tab
-        recent_label = ctk.CTkLabel(
-            tabview.tab("Recent"),
-            text="Recent analyses will appear here",
-            font=("Arial", 11)
-        )
-        recent_label.pack(pady=20)
-        
-        # Favorites tab
-        fav_label = ctk.CTkLabel(
-            tabview.tab("Favorites"),
-            text="Favorite analyses will appear here",
-            font=("Arial", 11)
-        )
-        fav_label.pack(pady=20)
-        
-        # Meter browser button
-        btn_meter_browser = ctk.CTkButton(
-            info_frame,
-            text="≡ƒôÜ Browse Meters",
-            command=self._on_meter_browser
-        )
-        btn_meter_browser.pack(pady=10, padx=10)
+        self.history_panel.pack(fill="both", expand=True)
     
     def _create_statusbar(self):
         """Create the status bar at the bottom."""
@@ -322,49 +257,180 @@ Features coming soon:
     
     def _bind_shortcuts(self):
         """Bind keyboard shortcuts."""
+        # Essential shortcuts
         self.root.bind("<Control-q>", lambda e: self.quit())
         self.root.bind("<Control-Return>", lambda e: self._on_analyze())
         self.root.bind("<Control-l>", lambda e: self._on_clear())
+        
+        # Clipboard operations
+        self.root.bind("<Control-v>", lambda e: self._on_paste())
+        self.root.bind("<Control-c>", lambda e: self._on_copy_results())
+        
+        # New/Clear all
+        self.root.bind("<Control-n>", lambda e: self._on_new())
+        
+        # Toggle fuzzy matching
+        self.root.bind("<Control-f>", lambda e: self._toggle_fuzzy())
+        
+        # Help shortcuts (placeholders for Phase 4+)
+        self.root.bind("<Control-h>", lambda e: self._show_keyboard_help())
+        self.root.bind("<F1>", lambda e: self._show_help())
+        
+        # Refresh/Re-analyze
+        self.root.bind("<F5>", lambda e: self._on_analyze())
     
     # Command handlers (placeholders)
     def _on_paste(self):
         """Handle paste button click."""
-        self._update_status("Paste functionality coming soon...")
+        if self.text_input.paste_from_clipboard():
+            self._update_status("Text pasted from clipboard")
+        else:
+            self._update_status("Clipboard paste not available or failed")
     
     def _on_clear(self):
         """Handle clear button click."""
-        self.text_input.delete("1.0", "end")
+        self.text_input.clear()
         self._update_status("Input cleared")
     
     def _on_analyze(self):
         """Handle analyze button click."""
-        text = self.text_input.get("1.0", "end-1c").strip()
-        if text:
-            self._update_status("Analysis functionality coming in Phase 3...")
-            self.results_display.delete("1.0", "end")
-            self.results_display.insert("1.0", 
-                f"Input text received ({len(text)} characters).\n\n"
-                "Analysis integration will be implemented in Phase 3.\n\n"
-                "For now, the UI structure is ready!"
-            )
-        else:
+        text = self.text_input.get_text()
+        if not text:
             self._update_status("Please enter text to analyze")
+            return
+        
+        # Get analysis settings
+        scheme = self.text_input.get_script()
+        fuzzy = self.fuzzy_var.get()
+        k = int(self.k_var.get()) if self.k_var.get().isdigit() else 10
+        verse_mode = '\n' in text  # Auto-detect verse mode
+        
+        # Update status
+        self._update_status("Analyzing...")
+        
+        # Perform analysis
+        result = self.analysis_controller.analyze(
+            text=text,
+            scheme=scheme,
+            fuzzy=fuzzy,
+            k=k,
+            verse_mode=verse_mode
+        )
+        
+        # Display results
+        if result.success:
+            # Prepare data for color-coded display
+            result_data = {
+                'lines': result.lines,
+                'verse_info': result.verse_info,
+                'timestamp': result.timestamp.strftime('%Y-%m-%d %H:%M:%S') if result.timestamp else None
+            }
+            
+            # Display with colors
+            self.results_display.display_result_with_colors(result_data)
+            
+            # Add to history
+            self.history_panel.add_to_history(
+                text=text,
+                result=result,
+                metadata={
+                    'scheme': scheme,
+                    'fuzzy': fuzzy,
+                    'k': k
+                }
+            )
+            
+            self._update_status("Analysis complete")
+        else:
+            # Display error
+            self.results_display.display_error(result.error_message)
+            self._update_status(f"Analysis failed: {result.error_message}")
     
     def _on_meter_browser(self):
         """Handle meter browser button click."""
         self._update_status("Meter browser coming in Phase 6...")
+    
+    def _on_history_item_select(self, item):
+        """Handle history item selection."""
+        # Restore the text from history item
+        if item and 'full_text' in item:
+            self.text_input.set_text(item['full_text'])
+            self._update_status(f"Restored from history")
+    
+    def _on_copy_results(self):
+        """Handle copy results shortcut (Ctrl+C)."""
+        if self.results_display.copy_to_clipboard():
+            self._update_status("Results copied to clipboard")
+        else:
+            self._update_status("Clipboard copy not available or no results to copy")
+    
+    def _on_new(self):
+        """Handle new/clear all shortcut (Ctrl+N)."""
+        self.text_input.clear()
+        self.results_display.set_placeholder()
+        self._update_status("Cleared all")
+    
+    def _toggle_fuzzy(self):
+        """Handle toggle fuzzy matching shortcut (Ctrl+F)."""
+        current = self.fuzzy_var.get()
+        self.fuzzy_var.set(not current)
+        status = "enabled" if not current else "disabled"
+        self._update_status(f"Fuzzy matching {status}")
+    
+    def _show_keyboard_help(self):
+        """Handle keyboard help shortcut (Ctrl+H) - placeholder."""
+        self._update_status("Keyboard shortcuts help coming in Phase 4...")
+    
+    def _show_help(self):
+        """Handle help shortcut (F1) - placeholder."""
+        self._update_status("Help documentation coming in Phase 4...")
     
     def _toggle_theme(self):
         """Toggle between light and dark themes."""
         current = ctk.get_appearance_mode()
         new_mode = "Light" if current == "Dark" else "Dark"
         ctk.set_appearance_mode(new_mode)
-        self.btn_theme.configure(text="ΓÿÇ∩╕Å" if new_mode == "Dark" else "≡ƒîÖ")
         self._update_status(f"Switched to {new_mode} theme")
     
     def _update_status(self, message: str):
         """Update the status bar message."""
         self.status_label.configure(text=message)
+    
+    def _save_panel_sizes(self):
+        """Save current panel sizes to config."""
+        if hasattr(self, 'paned_window') and hasattr(self, 'config_manager'):
+            try:
+                # Get sash positions (where the dividers are)
+                sash1_pos = self.paned_window.sash_coord(0)[0]
+                sash2_pos = self.paned_window.sash_coord(1)[0]
+                
+                # Save to config
+                self.config_manager.set('window', 'panel_sash1', str(sash1_pos))
+                self.config_manager.set('window', 'panel_sash2', str(sash2_pos))
+                self.config_manager.save()
+            except:
+                pass  # Ignore errors during save
+    
+    def _restore_panel_sizes(self):
+        """Restore panel sizes from config."""
+        if hasattr(self, 'paned_window') and hasattr(self, 'config_manager'):
+            try:
+                # Get saved positions
+                sash1_pos = self.config_manager.get('window', 'panel_sash1', '350')
+                sash2_pos = self.config_manager.get('window', 'panel_sash2', '800')
+                
+                # Apply positions with a small delay to ensure window is fully rendered
+                self.root.after(100, lambda: self._apply_panel_sizes(int(sash1_pos), int(sash2_pos)))
+            except:
+                pass  # Use default positions if restore fails
+    
+    def _apply_panel_sizes(self, sash1_pos: int, sash2_pos: int):
+        """Apply panel sizes after window is rendered."""
+        try:
+            self.paned_window.sash_place(0, sash1_pos, 0)
+            self.paned_window.sash_place(1, sash2_pos, 0)
+        except:
+            pass  # Ignore errors
     
     def run(self):
         """
@@ -378,6 +444,9 @@ Features coming soon:
     
     def quit(self):
         """Quit the application gracefully."""
+        # Save panel sizes before quitting
+        self._save_panel_sizes()
+        
         if self.root:
             self.root.quit()
             self.root.destroy()

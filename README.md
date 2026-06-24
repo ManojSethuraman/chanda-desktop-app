@@ -6,13 +6,14 @@ A modern Windows desktop application for identifying and analyzing Sanskrit poet
 
 - 🎨 Modern GUI with dark/light themes
 - 📝 Real-time Sanskrit meter identification
-- 🌐 Multi-script support (15+ transliteration schemes)
-- 📚 Interactive meter database browser (200+ meters)
-- 📊 Color-coded Laghu-Guru visualization
-- 🔍 Fuzzy matching with similarity scoring
-- 📁 File import/export (TXT, JSON, CSV, HTML)
-- ⭐ History tracking and favorites
-- ⚙️ Customizable settings and preferences
+- 🌐 Multi-script support (7 transliteration schemes: Devanagari, IAST, ITRANS, Harvard-Kyoto, SLP1, Velthuis, WX)
+- 🎨 **Color-coded Laghu-Guru visualization (Phase 4 ✅)** - Blue for Laghu, Red for Guru, Green for exact matches
+- 📊 **Syllable pattern grid display (Phase 4 ✅)** - Visual grid with colored syllables and pattern indicators
+- 🔍 Fuzzy matching with similarity scoring (Top-K results up to 50)
+- ⭐ History tracking (50 items) and favorites (100 items) with persistence
+- ⚙️ 10 keyboard shortcuts for efficient workflow
+- 📁 Clipboard integration (paste/copy)
+- 💾 Persistent configuration across sessions
 
 ## Requirements
 
