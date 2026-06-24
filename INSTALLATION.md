@@ -20,13 +20,13 @@ cd chanda-desktop-app
 # 2. Install dependencies
 # Note: This assumes chanda library is at C:\Chandojnana\chanda
 # If your chanda library is elsewhere, edit requirements.txt line 6
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 # 3. Run the application
 python main.py
 ```
 
-**Important:** The `requirements.txt` contains: `-e C:\Chandojnana\chanda`  
+**Important:** The `requirements.txt` contains: `-e C:/Chandojnana/chanda` (uses forward slashes for Windows compatibility)  
 If your chanda library is in a different location, update this path before running `pip install`.
 
 ### Option 2: Standalone Installation
@@ -79,7 +79,29 @@ python main.py
 
 ## Troubleshooting
 
-### "ModuleNotFoundError: No module named 'chanda'"
+### Issue: "not a valid editable requirement"
+
+**Error:**
+```
+ERROR: C:Chandojnanachanda is not a valid editable requirement...
+```
+
+**Solution:**
+The path in `requirements.txt` must use forward slashes (works on all platforms):
+```
+-e C:/Chandojnana/chanda
+```
+NOT backslashes:
+```
+-e C:\Chandojnana\chanda  ❌
+```
+
+After fixing, run:
+```powershell
+python -m pip install -r requirements.txt
+```
+
+### Issue: ModuleNotFoundError: No module named 'chanda'
 
 **Solution:**
 ```bash

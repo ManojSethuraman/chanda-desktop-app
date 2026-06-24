@@ -3,7 +3,7 @@
 
 # Core Analysis Engine
 # Install in editable mode from source (live updates during development)
--e C:\Chandojnana\chanda
+-e C:/Chandojnana/chanda
 
 # Alternative for production/distribution: pip install chanda
 

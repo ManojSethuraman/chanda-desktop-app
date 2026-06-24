@@ -157,46 +157,60 @@ class AnalysisController:
         
         Args:
             text: Single line of text
-            scheme: Transliteration scheme
+            scheme: Transliteration scheme (ignored - Chanda auto-detects)
             
         Returns:
             AnalysisResult with line analysis
         """
-        # Use chanda's analyze_line method
+        # Use chanda's analyze_line method (auto-detects input scheme)
         result = self.chanda.analyze_line(
             text.strip(),
-            input_scheme=scheme
+            fuzzy=self.fuzzy_enabled,
+            k=self.fuzzy_k
         )
         
-        # Format result
-        line_results = []
+        # Convert Devanagari ग/ल to English G/L for display
+        lg_pattern = ''.join(['G' if x == 'ग' else 'L' if x == 'ल' else x 
+                              for x in result.lg])
         
-        # Extract pattern (laghu-guru)
-        pattern = result.get('pattern', '')
+        # Extract meters from ChandaResult
+        meters = []
         
-        # Extract matched meters
-        meters = result.get('meters', [])
+        if result.found:
+            # Exact matches from result.chanda
+            for chanda_name, pada_tuple in result.chanda:
+                meters.append({
+                    'name': chanda_name,  # Keep Devanagari name
+                    'pada': pada_tuple[0] if pada_tuple else '',
+                    'exact': True,
+                    'similarity': 1.0
+                })
         
-        # Get syllables
-        syllables = result.get('syllables', [])
+        if result.fuzzy:
+            # Fuzzy matches from result.fuzzy
+            for fuzzy_item in result.fuzzy[:self.fuzzy_k]:
+                chanda_name = fuzzy_item['chanda'][0][0] if fuzzy_item['chanda'] else 'Unknown'
+                meters.append({
+                    'name': chanda_name,
+                    'exact': False,
+                    'similarity': fuzzy_item['similarity']
+                })
         
         # Build line result
         line_data = {
-            'text': text.strip(),
-            'pattern': pattern,
-            'syllables': syllables,
-            'syllable_count': len(syllables),
-            'meters': meters[:self.fuzzy_k] if self.fuzzy_enabled else meters,
-            'exact_match': len(meters) > 0 and meters[0].get('exact', False) if meters else False
+            'text': result.line,
+            'pattern': lg_pattern,
+            'syllables': result.syllables,
+            'syllable_count': result.length,
+            'meters': meters,
+            'exact_match': result.found
         }
-        
-        line_results.append(line_data)
         
         return AnalysisResult(
             input_text=text,
-            input_scheme=scheme,
+            input_scheme=result.scheme,  # Use auto-detected scheme
             success=True,
-            lines=line_results,
+            lines=[line_data],
             timestamp=datetime.now()
         )
     
@@ -206,7 +220,7 @@ class AnalysisController:
         
         Args:
             text: Multi-line text
-            scheme: Transliteration scheme
+            scheme: Transliteration scheme (ignored - Chanda auto-detects)
             
         Returns:
             AnalysisResult with verse analysis
@@ -224,26 +238,52 @@ class AnalysisController:
         
         # Analyze each line
         line_results = []
+        detected_scheme = None
         
         for line_text in lines:
             try:
                 result = self.chanda.analyze_line(
                     line_text,
-                    input_scheme=scheme
+                    fuzzy=self.fuzzy_enabled,
+                    k=self.fuzzy_k
                 )
                 
-                # Extract data
-                pattern = result.get('pattern', '')
-                meters = result.get('meters', [])
-                syllables = result.get('syllables', [])
+                # Store first detected scheme
+                if detected_scheme is None:
+                    detected_scheme = result.scheme
+                
+                # Convert ग/ल to G/L
+                lg_pattern = ''.join(['G' if x == 'ग' else 'L' if x == 'ल' else x 
+                                      for x in result.lg])
+                
+                # Extract meters
+                meters = []
+                
+                if result.found:
+                    for chanda_name, pada_tuple in result.chanda:
+                        meters.append({
+                            'name': chanda_name,
+                            'pada': pada_tuple[0] if pada_tuple else '',
+                            'exact': True,
+                            'similarity': 1.0
+                        })
+                
+                if result.fuzzy:
+                    for fuzzy_item in result.fuzzy[:self.fuzzy_k]:
+                        chanda_name = fuzzy_item['chanda'][0][0] if fuzzy_item['chanda'] else 'Unknown'
+                        meters.append({
+                            'name': chanda_name,
+                            'exact': False,
+                            'similarity': fuzzy_item['similarity']
+                        })
                 
                 line_data = {
-                    'text': line_text,
-                    'pattern': pattern,
-                    'syllables': syllables,
-                    'syllable_count': len(syllables),
-                    'meters': meters[:self.fuzzy_k] if self.fuzzy_enabled else meters,
-                    'exact_match': len(meters) > 0 and meters[0].get('exact', False) if meters else False
+                    'text': result.line,
+                    'pattern': lg_pattern,
+                    'syllables': result.syllables,
+                    'syllable_count': result.length,
+                    'meters': meters,
+                    'exact_match': result.found
                 }
                 
                 line_results.append(line_data)
@@ -264,7 +304,7 @@ class AnalysisController:
         
         return AnalysisResult(
             input_text=text,
-            input_scheme=scheme,
+            input_scheme=detected_scheme or scheme,
             success=True,
             lines=line_results,
             verse_info=verse_info,
