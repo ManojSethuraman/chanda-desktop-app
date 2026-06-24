@@ -9,7 +9,7 @@ the application lifecycle and main window.
 
 import customtkinter as ctk
 from typing import Optional
-from ui.widgets import SanskritTextInput, ResultsDisplay, HistoryPanel
+from ui.widgets import SanskritTextInput, ResultsDisplay
 from controllers import AnalysisController
 
 
@@ -30,7 +30,7 @@ class ChandaDesktopApp:
         """Initialize the Chanda Desktop Application."""
         self.root: Optional[ctk.CTk] = None
         self.title = "Chanda - Sanskrit Meter Analyzer"
-        self.geometry = "1200x800"
+        self.geometry = "1000x700"
         
         # Initialize analysis controller
         self.analysis_controller = AnalysisController()
@@ -173,17 +173,17 @@ class ChandaDesktopApp:
         # These will hold our custom widgets
         self.left_container = ctk.CTkFrame(self.paned_window)
         self.center_container = ctk.CTkFrame(self.paned_window)
-        self.right_container = ctk.CTkFrame(self.paned_window)
         
         # Add panels to PanedWindow
-        self.paned_window.add(self.left_container, minsize=200)
-        self.paned_window.add(self.center_container, minsize=300)
-        self.paned_window.add(self.right_container, minsize=200)
+        self.paned_window.add(self.left_container, minsize=250)
+        self.paned_window.add(self.center_container, minsize=400)
         
         # Create the actual panel content
         self._create_input_panel(self.left_container)
         self._create_results_panel(self.center_container)
-        self._create_info_panel(self.right_container)
+        
+        # Set initial position after window is rendered (40% for input)
+        self.root.after(100, self._set_initial_panel_position)
         
         # Restore saved panel sizes
         self._restore_panel_sizes()
@@ -206,24 +206,9 @@ class ChandaDesktopApp:
         self.text_input.pack(fill="both", expand=True)
     
     def _create_results_panel(self, parent):
-        """Create the results panel (center)."""
+        """Create the results panel (right side)."""
         self.results_display = ResultsDisplay(parent)
         self.results_display.pack(fill="both", expand=True)
-    
-    def _create_info_panel(self, parent):
-        """Create the info/history panel (right side)."""
-        # Initialize config_manager if not already present
-        if not hasattr(self, 'config_manager'):
-            from app.config import ConfigManager
-            self.config_manager = ConfigManager()
-        
-        self.history_panel = HistoryPanel(
-            parent,
-            config_manager=self.config_manager,
-            on_item_select=self._on_history_item_select,
-            on_meter_browser=self._on_meter_browser
-        )
-        self.history_panel.pack(fill="both", expand=True)
     
     def _create_statusbar(self):
         """Create the status bar at the bottom."""
@@ -305,6 +290,9 @@ class ChandaDesktopApp:
         k = int(self.k_var.get()) if self.k_var.get().isdigit() else 10
         verse_mode = '\n' in text  # Auto-detect verse mode
         
+        # Clear previous results
+        self.results_display.clear()
+        
         # Update status
         self._update_status("Analyzing...")
         
@@ -329,17 +317,6 @@ class ChandaDesktopApp:
             # Display with colors
             self.results_display.display_result_with_colors(result_data)
             
-            # Add to history
-            self.history_panel.add_to_history(
-                text=text,
-                result=result,
-                metadata={
-                    'scheme': scheme,
-                    'fuzzy': fuzzy,
-                    'k': k
-                }
-            )
-            
             self._update_status("Analysis complete")
         else:
             # Display error
@@ -349,13 +326,6 @@ class ChandaDesktopApp:
     def _on_meter_browser(self):
         """Handle meter browser button click."""
         self._update_status("Meter browser coming in Phase 6...")
-    
-    def _on_history_item_select(self, item):
-        """Handle history item selection."""
-        # Restore the text from history item
-        if item and 'full_text' in item:
-            self.text_input.set_text(item['full_text'])
-            self._update_status(f"Restored from history")
     
     def _on_copy_results(self):
         """Handle copy results shortcut (Ctrl+C)."""
@@ -400,13 +370,11 @@ class ChandaDesktopApp:
         """Save current panel sizes to config."""
         if hasattr(self, 'paned_window') and hasattr(self, 'config_manager'):
             try:
-                # Get sash positions (where the dividers are)
-                sash1_pos = self.paned_window.sash_coord(0)[0]
-                sash2_pos = self.paned_window.sash_coord(1)[0]
+                # Get sash position (where the divider is)
+                sash_pos = self.paned_window.sash_coord(0)[0]
                 
                 # Save to config
-                self.config_manager.set('window', 'panel_sash1', str(sash1_pos))
-                self.config_manager.set('window', 'panel_sash2', str(sash2_pos))
+                self.config_manager.set('window', 'panel_sash_position', str(sash_pos))
                 self.config_manager.save()
             except:
                 pass  # Ignore errors during save
@@ -415,20 +383,30 @@ class ChandaDesktopApp:
         """Restore panel sizes from config."""
         if hasattr(self, 'paned_window') and hasattr(self, 'config_manager'):
             try:
-                # Get saved positions
-                sash1_pos = self.config_manager.get('window', 'panel_sash1', '350')
-                sash2_pos = self.config_manager.get('window', 'panel_sash2', '800')
+                # Get saved position (default 400 = 40% of 1000px window)
+                sash_pos = self.config_manager.get('window', 'panel_sash_position', '400')
                 
-                # Apply positions with a small delay to ensure window is fully rendered
-                self.root.after(100, lambda: self._apply_panel_sizes(int(sash1_pos), int(sash2_pos)))
+                # Apply position with a small delay to ensure window is fully rendered
+                self.root.after(150, lambda: self._apply_panel_size(int(sash_pos)))
             except:
                 pass  # Use default positions if restore fails
     
-    def _apply_panel_sizes(self, sash1_pos: int, sash2_pos: int):
-        """Apply panel sizes after window is rendered."""
+    def _set_initial_panel_position(self):
+        """Set initial panel position to 40% of window width."""
         try:
-            self.paned_window.sash_place(0, sash1_pos, 0)
-            self.paned_window.sash_place(1, sash2_pos, 0)
+            # Get current window width
+            window_width = self.paned_window.winfo_width()
+            if window_width > 100:  # Make sure window is rendered
+                # Set input panel to 40% of window width
+                sash_pos = int(window_width * 0.40)
+                self.paned_window.sash_place(0, sash_pos, 0)
+        except:
+            pass  # Ignore errors
+    
+    def _apply_panel_size(self, sash_pos: int):
+        """Apply panel size after window is rendered."""
+        try:
+            self.paned_window.sash_place(0, sash_pos, 0)
         except:
             pass  # Ignore errors
     

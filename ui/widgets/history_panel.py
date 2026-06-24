@@ -33,7 +33,7 @@ class HistoryPanel(ctk.CTkFrame):
         favorite_items: List of favorite items
     """
     
-    MAX_HISTORY = 50
+    MAX_HISTORY = 10
     MAX_FAVORITES = 100
     
     def __init__(
@@ -72,13 +72,24 @@ class HistoryPanel(ctk.CTkFrame):
     
     def _create_ui(self):
         """Create the UI components."""
-        # Header
+        # Header with count badge
+        header_frame = ctk.CTkFrame(self, fg_color="transparent")
+        header_frame.pack(pady=5, padx=10, fill="x")
+        
         header = ctk.CTkLabel(
-            self,
+            header_frame,
             text="History & Info",
             font=("Arial", 14, "bold")
         )
-        header.pack(pady=5, padx=10, anchor="w")
+        header.pack(side="left")
+        
+        self.count_label = ctk.CTkLabel(
+            header_frame,
+            text="(0)",
+            font=("Arial", 10),
+            text_color="gray"
+        )
+        self.count_label.pack(side="left", padx=5)
         
         # Tabview for History and Favorites
         self.tabview = ctk.CTkTabview(self)
@@ -153,6 +164,9 @@ class HistoryPanel(ctk.CTkFrame):
         # Update UI
         self._refresh_history_display()
         
+        # Update count badge
+        self.count_label.configure(text=f"({len(self.history_items)})")
+        
         # Save to config
         self._save_to_config()
     
@@ -206,6 +220,7 @@ class HistoryPanel(ctk.CTkFrame):
         """Clear all history."""
         self.history_items = []
         self._refresh_history_display()
+        self.count_label.configure(text="(0)")
         self._save_to_config()
     
     def clear_favorites(self):
@@ -266,23 +281,27 @@ class HistoryPanel(ctk.CTkFrame):
     
     def _create_history_item_widget(self, parent, item: Dict, index: int):
         """Create a widget for a history item."""
-        frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.pack(fill="x", pady=2, padx=2)
+        frame = ctk.CTkFrame(parent, fg_color=("#d0d0d0", "#2d2d2d"), border_width=1, border_color=("#b0b0b0", "#404040"))
+        frame.pack(fill="x", pady=3, padx=2)
         
         # Text preview (truncated)
         text_preview = item['text'][:50] + "..." if len(item['text']) > 50 else item['text']
         
+        # Timestamp
+        timestamp = datetime.fromisoformat(item['timestamp']).strftime('%H:%M')
+        
         btn = ctk.CTkButton(
             frame,
-            text=f"{text_preview}",
-            font=("Arial", 9),
-            height=25,
+            text=f"[{timestamp}] {text_preview}",
+            font=("Arial", 10),
+            height=32,
             fg_color="transparent",
-            hover_color=("gray85", "gray25"),
+            text_color=("#000000", "#ffffff"),
+            hover_color=("#c0c0c0", "#3d3d3d"),
             anchor="w",
             command=lambda: self._on_history_item_click(item)
         )
-        btn.pack(fill="x", side="left", expand=True)
+        btn.pack(fill="x", side="left", expand=True, padx=5, pady=2)
     
     def _create_favorite_item_widget(self, parent, item: Dict, index: int):
         """Create a widget for a favorite item."""

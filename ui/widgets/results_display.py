@@ -239,9 +239,11 @@ Features coming soon:
             
             self.textbox.insert("end", "\n")
         
-        # Timestamp
+        # Timestamp and status
         timestamp = result_data.get('timestamp')
         if timestamp:
+            self.textbox.insert("end", "\n" + "=" * 60 + "\n")
+            self.textbox.insert("end", "✓ Analysis completed successfully\n", "exact")
             self.textbox.insert("end", f"Analyzed at: {timestamp}\n", "info")
         
         self.textbox.config(state="disabled")
@@ -384,28 +386,6 @@ Features coming soon:
         self.textbox.config(state="normal")
         self.textbox.insert("1.0", placeholder)
         self.textbox.config(state="disabled")
-        """
-        Append text to existing results.
-        
-        Args:
-            text: Text to append
-        """
-        self.textbox.insert("end", f"\n{text}")
-    
-    def clear(self):
-        """Clear all displayed results."""
-        self.textbox.delete("1.0", "end")
-    
-    def set_placeholder(self, text: Optional[str] = None):
-        """
-        Set placeholder text in the display area.
-        
-        Args:
-            text: Placeholder text (uses default if None)
-        """
-        placeholder = text or self.DEFAULT_PLACEHOLDER
-        self.clear()
-        self.textbox.insert("1.0", placeholder)
     
     def get_text(self) -> str:
         """
